@@ -3,13 +3,14 @@
  */
 const simpleGit = require('simple-git');
 const XMLHttpRequest = require('xhr2');
+const fs = require('fs')
 
 // The .env is used only for development purposes and should be removed when deployed.
 require('dotenv').config();
 
 simpleGit().clean(simpleGit.CleanOptions.FORCE);
 
-const username = process.env.USERNAME;
+const username = process.env.USER;
 const token = process.env.TOKEN;
 const repo = process.env.REPO;
 
@@ -38,6 +39,39 @@ function authenticate(username, token) {
 }
 
 /**
+ * This function retrieves all the repositories from a user via their username and returns an array of repos.
+ * @param username Accepts a username as a string.
+ */
+ function allUserRepos(username){
+    let repos = [];
+    // Create new XMLHttpRequest object
+    const xhr = new XMLHttpRequest();
+        
+    // GitHub endpoint, dynamically passing in specified username
+    const url = `https://api.github.com/users/${username}/repos`;
+
+    // Open a new connection, using a GET request via URL endpoint
+    // Providing 3 arguments (GET/POST, The URL, Async True/False)
+    xhr.open('GET', url, true);
+
+    // When request is received
+    // Process it here
+    xhr.onload = function() {
+
+        // Parse API data into JSON
+        const data = JSON.parse(this.response);
+
+        for (let i in data) {
+            repos.push({repo: data[i].name, description: data[i].description})
+        }
+        return repos;
+    }
+
+    // Send the request to the server
+    xhr.send();
+}
+
+/**
  * This function checks if there is an existing data.message value. If data.message = null then sets the isAuthenticated boolean to true;
  * @param data Accepts a parsed JSON data object representation authentication data.
  */
@@ -49,6 +83,22 @@ function checkAuthenticateResponse(data) {
         isAuthenticated = true;
         console.log('Successfully authenticated user. 😊');
     }
+}
+
+/**
+ * This function changes to the correct directory and grabs the specified file using the filename in the repository folder.
+ * @param repo Accepts a repository name as a string.
+ * @param filename Accepts a filename as a string.
+ */
+async function getMDFile(repo, filename) {
+    process.chdir(`./${repo}`)
+    await fs.readFile(`${filename}`, (err, data) => {
+        if (err) {
+            console.error(`Your ${filename}.md file could not be read. 👎🏻`)
+        }
+        console.log(`Your ${filename}.md has been returned. 😊`);
+        return data;
+    })
 }
 
 /**
@@ -86,35 +136,11 @@ function addFileToRepo(repo, filename) {
         })
 }
 
-/**
- * This function retrieves all the repositories from a user via their username and returns an array of repos.
- * @param username Accepts a username as a string.
- */
-function allUserRepos(username){
-    let repos = [];
-    // Create new XMLHttpRequest object
-    const xhr = new XMLHttpRequest();
-        
-    // GitHub endpoint, dynamically passing in specified username
-    const url = `https://api.github.com/users/${username}/repos`;
-
-    // Open a new connection, using a GET request via URL endpoint
-    // Providing 3 arguments (GET/POST, The URL, Async True/False)
-    xhr.open('GET', url, true);
-
-    // When request is received
-    // Process it here
-    xhr.onload = function() {
-
-        // Parse API data into JSON
-        const data = JSON.parse(this.response);
-
-        for (let i in data) {
-            repos.push({repo: data[i].name, description: data[i].description})
-        }
-        return repos;
-    }
-
-    // Send the request to the server
-    xhr.send();
-}
+// cloneRepo(username, token, repo)
+//     .then(() => {
+//         let filename = "README.MD";
+//         getMDFile(repo, filename);
+//     })
+//     .catch((err) => {
+//         console.log('Failed.')
+//     })
